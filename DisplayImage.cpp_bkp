@@ -1,0 +1,149 @@
+#include <iostream>
+#include <stdio.h>
+#include <opencv2/opencv.hpp>
+#include<iterator>
+
+using namespace cv;
+using namespace std;
+
+
+
+void nms(
+	const vector<Rect>& srcRects,
+	vector<Rect>& resRects,
+	float thresh
+	)
+{
+	resRects.clear();
+
+	const size_t size = srcRects.size();
+	if (!size)
+	{
+		return;
+	}
+
+	// Sort the bounding boxes by the bottom - right y - coordinate of the bounding box
+	std::multimap<int, size_t> idxs;
+	for (size_t i = 0; i < size; ++i)
+	{
+		idxs.insert(std::pair<int, size_t>(srcRects[i].br().y, i));
+	}
+
+	// keep looping while some indexes still remain in the indexes list
+	while (idxs.size() > 0)
+	{
+		// grab the last rectangle
+		auto lastElem = --std::end(idxs);
+		const Rect& rect1 = srcRects[lastElem->second];
+
+		resRects.push_back(rect1);
+
+		idxs.erase(lastElem);
+
+		if(idxs.size() > 0){
+		for (auto pos = std::begin(idxs); pos != std::end(idxs); )
+		{
+			// grab the current rectangle
+			const Rect& rect2 = srcRects[pos->second];
+
+			float intArea = (rect1 & rect2).area();
+			float unionArea = rect1.area() + rect2.area() - intArea;
+			float overlap = intArea / unionArea;
+
+			// if there is sufficient overlap, suppress the current bounding box
+			if (overlap > thresh)
+			{
+				pos = idxs.erase(pos);
+			}
+			else
+			{
+				++pos;
+			}
+		}
+		}
+	}
+}
+
+
+
+
+
+
+int main(int argc, char** argv )
+{
+
+   if (argc != 2){
+   	printf("Error usage : %s <image_dir_name>\n",argv[0]);
+      	return EXIT_FAILURE;
+    }
+
+    char sPath[100];
+    memset(sPath, '\0', sizeof(sPath));
+    sprintf(sPath, "/home/sbaidya/test/%s/*.pgm", argv[1]);
+
+    //Object detection code
+
+    CascadeClassifier pedDetector;
+    pedDetector.load("cascade15.xml");
+
+
+    //String path("/home/sbaidya/stream/daimler/TestData/*.pgm");
+    //String path("/home/sbaidya/test/TestData/*.pgm");
+    //String path("/home/sbaidya/test/Data5/*.pgm");
+    String path(sPath);
+    vector<String> fn;
+    glob(path, fn, true);  
+
+    //while( cap.isOpened()){
+    for(size_t k=0; k<fn.size(); ++k)
+    {
+
+	Mat image = imread(fn[k]);
+
+	std::vector<Rect> peds;
+
+	// Detect peds
+	//pedDetector.detectMultiScale(image, peds, 1.1, 30, 0 | CV_HAAR_SCALE_IMAGE, Size(200, 320));
+	//pedDetector.detectMultiScale(image, peds, 2.5, 1, 0 | CV_HAAR_SCALE_IMAGE, Size(32, 68), Size(192, 408));
+	pedDetector.detectMultiScale(image, peds, 2.5, 3, 0 | CV_HAAR_SCALE_IMAGE, Size(20, 50), Size(200, 500));
+
+
+/*        for (int i = 0; i < (int) peds.size(); i++) 
+	{
+		Point pt1(peds[i].x, peds[i].y);
+             	Point pt2(peds[i].x + peds[i].width,peds[i].y + peds[i].width);
+
+		// Draw a rectangle around the detected pedestrian
+		rectangle(image, pt1, pt2, Scalar(0, 0, 255), 2);
+		putText(image, "Pedestran", pt1, FONT_HERSHEY_PLAIN, 1.0, Scalar(0, 255, 0), 2.0);
+
+	}
+*/
+
+	vector<Rect> nmsRect;
+	nms(peds, nmsRect, 0.9);
+	
+	for (int i = 0; i < (int) nmsRect.size(); i++) 
+        {
+                Point pt1(nmsRect[i].x, nmsRect[i].y);
+                Point pt2(nmsRect[i].x + nmsRect[i].width,nmsRect[i].y + nmsRect[i].height);
+
+                // Draw a rectangle around the detected pedestrian
+                rectangle(image, pt1, pt2, Scalar(0, 0, 255), 2);
+                putText(image, "Pedestran", pt1, FONT_HERSHEY_PLAIN, 1.0, Scalar(0, 255, 0), 2.0);
+
+        }
+
+
+
+	namedWindow("Display Image", WINDOW_AUTOSIZE );
+	imshow("Display Image", image);
+	waitKey(40);
+    }
+
+    return 0;
+}
+
+
+
+

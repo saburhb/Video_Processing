@@ -1,0 +1,20 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/sbaidya/test/objDet/DisplayImage.cpp
+iostream
+-
+stdio.h
+-
+opencv2/opencv.hpp
+-
+iterator
+-
+algorithm
+-
+
